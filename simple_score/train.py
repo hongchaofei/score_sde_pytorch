@@ -21,10 +21,11 @@ from simple_score import sde_lib
 from simple_score import utils
 from simple_score.ema import ExponentialMovingAverage
 import torch.optim as optim
+import torch
 
 
 from torch.utils.data.dataloader import DataLoader
-
+from torch.utils.data import Dataset, IterableDataset
 
 
 def train(config, model, dataset, workdir, resume_path=None):
@@ -101,5 +102,42 @@ def train(config, model, dataset, workdir, resume_path=None):
 
 
 
+class SpiralDataset(IterableDataset):
+
+    def __init__(self, centre=(0,0), r_min=1.0, r_max=5.0, rotation=10.0):
+        super().__init__()
+        self.centre = centre
+        self.r_min = r_min
+        self.r_max = r_max
+        self.rotation = rotation
+
+    def __iter__(self):
+        while True:
+            rotate = torch.rand(1)*self.rotation
+            r = self.r_min + (self.r_max-self.r_min)*rotate/self.rotation
+            x = self.centre[0] + r*torch.sin(rotate)
+            y = self.centre[1] + r*torch.cos(rotate)
+            data = torch.cat([x,y], dim=0)
+            yield data
+
+
+class SpiralListDataset(IterableDataset):
+
+    def __init__(self, centre=(0,0), r_min=1.0, r_max=5.0, rotation=10.0, dr=0.2):
+        super().__init__()
+        self.centre = centre
+        self.r_min = r_min
+        self.r_max = r_max
+        self.rotation = rotation
+        self.dr = dr
+
+    def __iter__(self):
+        while True:
+            rotate = torch.rand(1)*(self.rotation-3*self.dr) + torch.arange(start=0.0, end=2.5*self.dr, step=self.dr)
+            r = self.r_min + (self.r_max-self.r_min)*rotate/self.rotation
+            x = self.centre[0] + r*torch.sin(rotate)
+            y = self.centre[1] + r*torch.cos(rotate)
+            data = torch.stack([x,y], dim=-1).view(-1)
+            yield data
 
 
